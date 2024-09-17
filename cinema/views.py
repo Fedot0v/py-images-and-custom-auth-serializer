@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from django.db.migrations import serializer
 from django.db.models import F, Count
 from rest_framework import viewsets, mixins, status
 from rest_framework.authentication import TokenAuthentication
@@ -24,7 +23,8 @@ from cinema.serializers import (
     MovieSessionDetailSerializer,
     MovieListSerializer,
     OrderSerializer,
-    OrderListSerializer, MovieImageSerializer,
+    OrderListSerializer,
+    MovieImageSerializer,
 )
 
 
@@ -71,6 +71,18 @@ class MovieViewSet(
     authentication_classes = (TokenAuthentication,)
     permission_classes = (IsAdminOrIfAuthenticatedReadOnly,)
 
+    @action(
+        methods=["POST"],
+        detail=True,
+        url_path="upload-image",
+    )
+    def upload_image(self, request, pk=None):
+        movie = self.get_object()
+        serializer = self.get_serializer(movie, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     @staticmethod
     def _params_to_ints(qs):
         """Converts a list of string IDs to a list of integers"""
@@ -103,6 +115,8 @@ class MovieViewSet(
 
         if self.action == "retrieve":
             return MovieDetailSerializer
+        if self.action == "upload_image":
+            return MovieImageSerializer
 
         return MovieSerializer
 
@@ -144,18 +158,7 @@ class MovieSessionViewSet(viewsets.ModelViewSet):
         if self.action == "retrieve":
             return MovieSessionDetailSerializer
 
-        if self.action == "upload_image":
-            return MovieImageSerializer
-
         return MovieSessionSerializer
-
-    @action(methods=["POST"], detail=True, url_path="upload-image")
-    def upload_image(self, request, pk=None):
-        movie = self.get_object()
-        serializer = self.get_serializer(movie, data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class OrderPagination(PageNumberPagination):
